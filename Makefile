@@ -52,7 +52,7 @@ e2e: build ## build notation cli and run e2e test
 
 .PHONY: e2e-covdata
 e2e-covdata:
-	$(GO_EXE) tool covdata textfmt -i="test/e2e/${COVERAGE_DUMP_ROOT}" -o test/e2e/coverage.txt
+	go tool covdata textfmt -i="test/e2e/${COVERAGE_DUMP_ROOT}" -o test/e2e/coverage.txt
 
 .PHONY: clean
 clean:
