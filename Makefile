@@ -30,7 +30,7 @@ all: build
 FORCE:
 
 bin/%: cmd/% FORCE
-	go build $(GO_BUILD_FLAGS) -o $@ ./$<
+	go build -coverpkg "github.com/notaryproject/notation/internal/...,github.com/notaryproject/notation/pkg/,github.com/notaryproject/notation/cmd/notation" $(GO_BUILD_FLAGS) -o $@ ./$<
 
 .PHONY: download
 download: ## download dependencies via go mod
@@ -49,6 +49,10 @@ e2e: build ## build notation cli and run e2e test
 	NOTATION_BIN_PATH=`pwd`/bin/$(COMMANDS); \
 	cd ./test/e2e; \
 	./run.sh zot $$NOTATION_BIN_PATH
+
+.PHONY: e2e-covdata
+e2e-covdata:
+	$(GO_EXE) tool covdata textfmt -i="test/e2e/${COVERAGE_DUMP_ROOT}" -o test/e2e/coverage.txt
 
 .PHONY: clean
 clean:
