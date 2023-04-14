@@ -36,8 +36,8 @@ jobs:
         run: make test
       - name: Run e2e tests
         run:  |
-          export GOCOVERDIR=$GITHUB_WORKSPACE/test/e2e/$COVERAGE_DUMP_ROOT
-          echo $GOCOVERDIR
+          rm $GOCOVERDIR -rf
+          mkdir $GOCOVERDIR -p
           make e2e
           make e2e-covdata
         env:
