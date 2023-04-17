@@ -30,7 +30,7 @@ all: build
 FORCE:
 
 bin/%: cmd/% FORCE
-	go build -coverpkg "github.com/notaryproject/notation/internal/...,github.com/notaryproject/notation/pkg/,github.com/notaryproject/notation/cmd/..." $(GO_BUILD_FLAGS) -o $@ ./$<
+	go build -coverpkg "github.com/notaryproject/notation/internal/...,github.com/notaryproject/notation/pkg/...,github.com/notaryproject/notation/cmd/..." $(GO_BUILD_FLAGS) -o $@ ./$<
 
 .PHONY: download
 download: ## download dependencies via go mod
