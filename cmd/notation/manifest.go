@@ -26,11 +26,30 @@ func getManifestDescriptor(ctx context.Context, opts *SecureFlagOpts, reference 
 		return ocispec.Descriptor{}, registry.Reference{}, errors.New("reference is missing digest or tag")
 	}
 
-	manifestDesc, err := sigRepo.Resolve(ctx, ref.Reference)
+	manifestDesc, err := sigRepo.Resolve(ctx, ref.String())
 	if err != nil {
 		return ocispec.Descriptor{}, registry.Reference{}, err
 	}
 
 	logger.Infof("Reference %s resolved to manifest descriptor: %+v", ref.Reference, manifestDesc)
 	return manifestDesc, ref, nil
+}
+
+func resolveReference(ctx context.Context, opts *SecureFlagOpts, reference string, sigRepo notationregistry.Repository, fn func(registry.Reference, ocispec.Descriptor)) (registry.Reference, error) {
+	manifestDesc, ref, err := getManifestDescriptor(ctx, opts, reference, sigRepo)
+	if err != nil {
+		return registry.Reference{}, err
+	}
+
+	// reference is a digest reference
+	if err := ref.ValidateReferenceAsDigest(); err == nil {
+		return ref, nil
+	}
+
+	// reference is a tag reference
+	fn(ref, manifestDesc)
+	// resolve tag to digest reference
+	ref.Reference = manifestDesc.Digest.String()
+
+	return ref, nil
 }

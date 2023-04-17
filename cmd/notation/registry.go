@@ -3,8 +3,12 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
+	"path/filepath"
+	"strings"
+	"unicode"
 
 	"github.com/notaryproject/notation-go/log"
 	notationregistry "github.com/notaryproject/notation-go/registry"
@@ -21,7 +25,14 @@ import (
 	"oras.land/oras-go/v2/registry/remote/errcode"
 )
 
-const zeroDigest = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+const (
+	zeroDigest = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+)
+
+type ociLayout struct {
+	path      string
+	reference string
+}
 
 func getSignatureRepository(ctx context.Context, opts *SecureFlagOpts, reference string) (notationregistry.Repository, error) {
 	ref, err := registry.ParseReference(reference)
@@ -210,4 +221,46 @@ func pingReferrersAPI(ctx context.Context, remoteRepo *remote.Repository) error 
 func isErrorCode(err error, code string) bool {
 	var ec errcode.Error
 	return errors.As(err, &ec) && ec.Code == code
+}
+
+// ociLayoutRepositoryForSign returns an oci.Store as
+// registry.Repository
+func ociLayoutRepositoryForSign(path string, ociImageManifest bool) (notationregistry.Repository, error) {
+	repositoryOpts := notationregistry.RepositoryOptions{
+		OCIImageManifest: ociImageManifest,
+	}
+	return notationregistry.NewRepositoryWithOciStore(path, repositoryOpts)
+}
+
+// ociLayoutRepository returns a oci.Store as registry.Repository
+func ociLayoutRepository(path string) (notationregistry.Repository, error) {
+	return notationregistry.NewRepositoryWithOciStore(path, notationregistry.RepositoryOptions{})
+}
+
+// parseOCILayoutReference parses the raw in format of <path>[:<tag>|@<digest>]
+func parseOCILayoutReference(raw string) (path string, ref string, err error) {
+	if idx := strings.LastIndex(raw, "@"); idx != -1 {
+		// `digest` found
+		path = raw[:idx]
+		ref = raw[idx+1:]
+	} else {
+		// find `tag`
+		i := strings.LastIndex(raw, ":")
+		if i < 0 || (i == 1 && len(raw) > 2 && unicode.IsLetter(rune(raw[0])) && raw[2] == '\\') {
+			return "", "", notationerrors.ErrorOciLayoutMissingReference{}
+		} else {
+			path, ref = raw[:i], raw[i+1:]
+		}
+		if path == "" {
+			return "", "", fmt.Errorf("found empty file path in %q", raw)
+		}
+	}
+	return
+}
+
+// localArtifactReference creates an artifact reference for a local artifact
+func localArtifactReference(path string, digest string) string {
+	reg := strings.ToLower(filepath.Base(filepath.Dir(path)))
+	repo := strings.ToLower(filepath.Base(path))
+	return fmt.Sprintf("%s/%s@%s", reg, repo, digest)
 }
